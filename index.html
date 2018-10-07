@@ -1,0 +1,157 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Ludus</title>
+  <meta name="description" content="Fabric JS drag and drop example">
+  <meta name="author" content="Moreno Naitana">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    .canvas-container {
+      margin: 0 auto;
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas" width="640" height="300"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.7.22/fabric.min.js"></script>
+  <script>
+
+    // CHANGING VARIABLES
+    let selectedObject;
+    let savedLeft;
+    let clonedObject;
+    let animating = false;
+    
+    
+    // CANVAS SETUP    
+    const canvasStyle = {
+      backgroundColor : "#f5f5f5",
+    };
+    
+    const canvas = new fabric.Canvas('canvas', canvasStyle);
+
+    // CANVAS ELEMENTS AND STYLE
+    
+    const topPos = 70;
+    
+    const rectSize = {
+      width: 140,
+      height: 160,
+    }
+
+    const rect = new fabric.Rect({
+      ...rectSize,
+      left: 90,
+      top: topPos,
+      fill: '#2d2d2d',
+      id: 1,
+    });
+
+    const rect1 = new fabric.Rect({
+      ...rectSize,
+      left: 250,
+      top: topPos,
+      fill: '#6d3dff',
+      id: 2,
+    });
+
+    const rect2 = new fabric.Rect({
+      ...rectSize,
+      left: 410,
+      top: topPos,
+      fill: '#3d9aff',
+      id: 3,
+    });
+
+    const cloneStyle = {
+      fill: 'rgba(0, 0, 0, .2)',
+      strokeDashArray: [3, 3],
+      stroke: 'rgba(0, 0, 0, .5)',
+    };
+
+    const animationProps = {
+      duration: 200,
+      onChange: canvas.renderAll.bind(canvas),
+      onComplete: () => { animating = false },
+    };
+
+    canvas.add(rect, rect1, rect2);
+
+    
+    // CANVAS EVENTS
+    
+    // When moving elements, checking if entering another one's position
+    canvas.on("object:moving", (obj) => {
+
+      var hoverTarget = canvas.findTarget(obj.e, false);
+
+      if (!hoverTarget || hoverTarget.id === clonedObject.id || animating) return;
+
+      var x = obj.e.offsetX;
+      var y = obj.e.offsetY;
+
+      if (x > hoverTarget.left && x < (hoverTarget.left + hoverTarget.width) &&
+          y > hoverTarget.top && y < (hoverTarget.top + hoverTarget.height)) {
+          const pos = savedLeft;
+          animating = true;
+          savedLeft = hoverTarget.left;
+          clonedObject.animate('left', hoverTarget.left, animationProps);
+          hoverTarget.animate('left', pos, {
+            ...animationProps,
+            onComplete: () => {
+              animating = false;
+              clonedObject.setCoords();
+              hoverTarget.setCoords();
+              selectedObject.setCoords();
+            }
+          });
+          clonedObject.setCoords();
+          hoverTarget.setCoords();
+      }
+    });
+    
+    // New element selection, saving left position of element
+    canvas.on('object:selected', (evn) => {
+      selectedObject = evn.target;
+      savedLeft = selectedObject.left;
+    })
+
+    // Clicking down and checking if it's on element
+    canvas.on('mouse:down', (e) => {
+      if (!e.target) return;
+      selectedObject.clone((c) => {
+        clonedObject = c;
+        canvas.add(c);
+        c.set({
+          ...cloneStyle,
+          id: selectedObject.id
+        });
+      });
+    });
+    
+    // Releasing click, setting new position on selected element   
+    canvas.on('mouse:up', (evn) => {
+      if (!selectedObject) return;
+      const x = evn.e.offsetX;
+      const y = evn.e.offsetY;
+      selectedObject.set({
+        left: savedLeft,
+        top: topPos,
+      });
+      selectedObject.setCoords();
+      canvas.remove(clonedObject);
+    });
+
+  </script>
+</body>
+</html>
